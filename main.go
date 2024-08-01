@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -52,7 +53,11 @@ func handleGetTask(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
-	res.Write(resp)
+	if _, err := res.Write(resp); err != nil {
+		log.Println(err)
+		return
+	}
+
 }
 
 // Обработчик для отправки задачи на сервер
@@ -70,7 +75,10 @@ func handlePostTask(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-
+	if _, ok := tasks[task.ID]; ok {
+		http.Error(res, "Такая задача уже есть ", http.StatusBadRequest)
+		return
+	}
 	tasks[task.ID] = task
 
 	res.Header().Set("Content-Type", "application/json")
@@ -93,22 +101,21 @@ func handleGetTaskId(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
-	res.Write(resp)
-
+	if _, err := res.Write(resp); err != nil {
+		log.Println(err)
+		return
+	}
 }
 
 // Обработчик удаления задачи по ID
 func handleDeleteTaskId(res http.ResponseWriter, req *http.Request) {
 	id := chi.URLParam(req, "id")
-	for i := range tasks {
-		if tasks[i].ID == id {
-			delete(tasks, id)
-			res.WriteHeader(http.StatusOK)
-			return
-		}
+	if _, ok := tasks[id]; !ok {
 		http.Error(res, "Задача не найдена", http.StatusBadRequest)
 		return
 	}
+	delete(tasks, id)
+	res.WriteHeader(http.StatusOK)
 }
 
 func main() {
